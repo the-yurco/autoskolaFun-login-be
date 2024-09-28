@@ -11,7 +11,7 @@ const app = express();
 app.use(
   cors({
     origin: "http://localhost:3000",
-    credentials: true, // Allow credentials (cookies) to be sent
+    credentials: true,
   })
 );
 app.use(express.json());
@@ -20,13 +20,12 @@ app.use(express.urlencoded({ extended: true }));
 // Set up session management
 app.use(
   session({
-    secret: "secret-key", // Replace with your own secret key
     resave: false,
     saveUninitialized: true,
     cookie: {
-      secure: false, // Set true if using HTTPS, false for localhost dev
-      httpOnly: true, // Prevent client-side JavaScript from accessing the cookie
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours in milliseconds
+      secure: false,
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
@@ -54,12 +53,13 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-// Login route
+// lgoin route
 app.post("/login", (req, res) => {
   const { name, surname, password, role_id, city_id } = req.body;
 
   const query =
-    "SELECT * FROM front_users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?";
+    "SELECT id, name, surname, password, role_id, city_id, age, category FROM front_users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?";
+
   db.query(query, [name, surname, role_id, city_id], async (err, results) => {
     if (err) return res.status(500).send("Database error");
 
@@ -75,13 +75,14 @@ app.post("/login", (req, res) => {
       return res.status(401).send("Incorrect password");
     }
 
-    // Set session after successful login
     req.session.user = {
       id: user.id,
       name: user.name,
       surname: user.surname,
       role_id: user.role_id,
       city_id: user.city_id,
+      age: user.age,
+      category: user.category,
     };
 
     res.status(200).json({ user: req.session.user });
@@ -103,7 +104,7 @@ app.post("/logout", (req, res) => {
     if (err) {
       return res.status(500).send("Failed to log out");
     }
-    res.clearCookie("connect.sid"); // Clear the session cookie
+    res.clearCookie("connect.sid");
     res.status(200).send("Logged out");
   });
 });

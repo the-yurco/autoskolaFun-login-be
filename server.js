@@ -6,26 +6,37 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+const MySQLStore = require("express-mysql-session")(session);
 
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "https://ucebnicafun.emax-controls.eu",
     credentials: true,
   })
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Set up session management
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  port: process.env.DB_PORT,
+});
+
 app.use(
   session({
+    secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: true,
+    store: sessionStore,
     cookie: {
-      secure: false,
+      secure: true, // Make sure you're using HTTPS
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24, // 24 hours
     },
   })
 );
@@ -55,26 +66,37 @@ app.get("/", (req, res) => {
 
 // lgoin route
 app.post("/login", (req, res) => {
+  console.log("Received login request", req.body);
+
   const { name, surname, password, role_id, city_id } = req.body;
 
-  const query =
-    "SELECT id, name, surname, password, role_id, city_id, age, category FROM front_users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?";
+  const query = `
+    SELECT id, name, surname, password, role_id, city_id, age, category
+    FROM front_users
+    WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?`;
 
   db.query(query, [name, surname, role_id, city_id], async (err, results) => {
-    if (err) return res.status(500).send("Database error");
+    if (err) {
+      console.error("Database query error:", err);
+      return res.status(500).send("Database error");
+    }
 
     if (results.length === 0) {
+      console.log("User not found with provided credentials");
       return res.status(401).send("User not found");
     }
 
     const user = results[0];
+    console.log("User found:", user);
 
     // Check password
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
+      console.log("Incorrect password");
       return res.status(401).send("Incorrect password");
     }
 
+    // Set session after successful login
     req.session.user = {
       id: user.id,
       name: user.name,
@@ -85,6 +107,7 @@ app.post("/login", (req, res) => {
       category: user.category,
     };
 
+    console.log("Session set for user:", req.session.user);
     res.status(200).json({ user: req.session.user });
   });
 });

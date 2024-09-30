@@ -11,7 +11,11 @@ const MySQLStore = require("express-mysql-session")(session);
 // Middleware
 app.use(
   cors({
-    origin: "https://ucebnicafun.emax-controls.eu",
+    origin: [
+      "https://ucebnicafun.emax-controls.eu",
+      "https://emax-controls.eu/public",
+      "https://emax-controls.eu",
+    ],
     credentials: true,
   })
 );
@@ -34,8 +38,9 @@ app.use(
     saveUninitialized: true,
     store: sessionStore,
     cookie: {
-      secure: true, // Make sure you're using HTTPS
+      secure: true, // Must be true for sameSite 'none'
       httpOnly: true,
+      sameSite: "none", // Allows cross-site cookies
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
     },
   })

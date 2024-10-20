@@ -31,12 +31,11 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: ["http://localhost:3000"], // Replace with your frontend domain
+    origin: ["http://localhost:3000"],
     credentials: true,
   })
 );
 
-// Session middleware
 app.use(
   session({
     key: "session_cookie_name",
@@ -45,20 +44,18 @@ app.use(
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-      secure: false, // Set to true if using HTTPS
+      secure: false,
       httpOnly: false,
-      sameSite: "lax", // Use 'none' if cross-site cookies are required
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );
 
-// Test route
 app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-// Login route
 app.post(
   "/login",
   [

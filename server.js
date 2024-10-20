@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: ["https://ucebnicafun.emax-controls.eu"], // Replace with your frontend domain
+    origin: ["http://localhost:3000"], // Replace with your frontend domain
     credentials: true,
   })
 );
@@ -46,7 +46,7 @@ app.use(
     store: sessionStore,
     cookie: {
       secure: false, // Set to true if using HTTPS
-      httpOnly: true,
+      httpOnly: false,
       sameSite: "lax", // Use 'none' if cross-site cookies are required
       maxAge: 1000 * 60 * 60 * 24, // 24 hours
     },

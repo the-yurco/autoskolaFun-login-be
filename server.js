@@ -2,7 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
-const cors = require("cors");
+
 require("dotenv").config();
 const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");

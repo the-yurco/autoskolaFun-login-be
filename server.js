@@ -60,6 +60,7 @@ app.post(
   "/login",
   [
     body("name").notEmpty().withMessage("Name is required"),
+    body("surname").notEmpty().withMessage("Surname is required"),
     body("password").notEmpty().withMessage("Password is required"),
     body("role_id").isInt().withMessage("Role ID must be an integer"),
     body("city_id").isInt().withMessage("City ID must be an integer"),
@@ -71,15 +72,20 @@ app.post(
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, password, role_id, city_id } = req.body;
+    const { name, surname, password, role_id, city_id } = req.body;
 
     try {
       const query = `
-        SELECT id, name, password, role_id, city_id, age, category
+        SELECT id, name, surname, password, role_id, city_id, age, category
         FROM front_users
-        WHERE name = ? AND role_id = ? AND city_id = ?`;
+        WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?`;
 
-      const [results] = await pool.execute(query, [name, role_id, city_id]);
+      const [results] = await pool.execute(query, [
+        name,
+        surname,
+        role_id,
+        city_id,
+      ]);
 
       if (results.length === 0) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -97,6 +103,7 @@ app.post(
       req.session.user = {
         id: user.id,
         name: user.name,
+        surname: user.surname,
         role_id: user.role_id,
         city_id: user.city_id,
         age: user.age,

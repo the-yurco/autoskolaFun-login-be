@@ -127,7 +127,6 @@ app.get("/check-auth", (req, res) => {
     res.status(401).json({ message: "Not authenticated" });
   }
 });
-
 // Logout route
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {

@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: ["https://dev-ucebnicafun.emax-controls.eu/"],
+    origin: ["https://dev-ucebnicafun.emax-controls.eu"],
     credentials: true,
   })
 );

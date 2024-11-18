@@ -8,6 +8,7 @@ const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
 
 const app = express();
+const cors = require("cors");
 
 // MySQL connection pool
 const pool = mysql.createPool({
@@ -31,23 +32,21 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: ["https://dev-ucebnicafun.emax-controls.eu"],
-    credentials: true,
+    origin: "https://dev-ucebnicafun.emax-controls.eu", // Frontend origin
+    credentials: true, // Allow cookies
   })
 );
 
 app.use(
   session({
-    key: "session_cookie_name",
-    secret: process.env.SESSION_SECRET || "your-secret-key",
+    secret: "secret-key",
     resave: false,
     saveUninitialized: false,
-    store: sessionStore,
     cookie: {
-      secure: true,
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24,
+      secure: true, // Must be true for HTTPS (frontend is HTTPS)
+      httpOnly: true, // Prevents client-side access
+      sameSite: "none", // Required for cross-origin cookies
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
 );

@@ -60,7 +60,7 @@ app.post(
   "/login",
   [
     body("name").notEmpty().withMessage("Name is required"),
-    body("surname").notEmpty().withMessage("Surname is required"),
+    // body("surname").notEmpty().withMessage("Surname is required"),
     body("password").notEmpty().withMessage("Password is required"),
     body("role_id").isInt().withMessage("Role ID must be an integer"),
     body("city_id").isInt().withMessage("City ID must be an integer"),
@@ -82,7 +82,7 @@ app.post(
 
       const [results] = await pool.execute(query, [
         name,
-        surname,
+        // surname,
         role_id,
         city_id,
       ]);
@@ -103,7 +103,7 @@ app.post(
       req.session.user = {
         id: user.id,
         name: user.name,
-        surname: user.surname,
+        // surname: user.surname,
         role_id: user.role_id,
         city_id: user.city_id,
         age: user.age,

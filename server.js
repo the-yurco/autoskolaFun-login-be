@@ -2,7 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
-
+const cors = require("cors");
 require("dotenv").config();
 const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
@@ -32,21 +32,24 @@ app.use(express.urlencoded({ extended: true }));
 // CORS configuration
 app.use(
   cors({
-    origin: "https://dev-ucebnicafun.emax-controls.eu", // Frontend origin
+    // origin: "https://dev-ucebnicafun.emax-controls.eu", // Frontend origin
+    origin: "http://localhost:3000",
     credentials: true, // Allow cookies
   })
 );
 
 app.use(
   session({
-    secret: "secret-key",
+    key: "session_cookie_name",
+    secret: process.env.SESSION_SECRET || "your-secret-key",
     resave: false,
     saveUninitialized: false,
+    store: sessionStore,
     cookie: {
-      secure: true, // Must be true for HTTPS (frontend is HTTPS)
-      httpOnly: true, // Prevents client-side access
-      sameSite: "none", // Required for cross-origin cookies
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      secure: false, //localhost false
+      httpOnly: false, //localhost false
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 60 * 24,
     },
   })
 );

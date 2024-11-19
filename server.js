@@ -8,7 +8,7 @@ const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
 
 const app = express();
-const cors = require("cors");
+// const cors = require("cors");
 
 // MySQL connection pool
 const pool = mysql.createPool({

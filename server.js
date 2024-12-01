@@ -33,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: "https://dev-ucebnicafun.emax-controls.eu", // Frontend origin
-    // origin: "http://localhost:3000",
+    origin: "http://localhost:3000",
     credentials: true, // Allow cookies
   })
 );

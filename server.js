@@ -140,6 +140,61 @@ app.post("/logout", (req, res) => {
   });
 });
 
+app.post(
+  "/forgot-password",
+  [
+    body("oldPassword").notEmpty().withMessage("Old password is required"),
+    body("newPassword")
+      .isLength({ min: 8 })
+      .withMessage("New password must be at least 8 characters long"),
+  ],
+  async (req, res) => {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { oldPassword, newPassword } = req.body;
+
+    if (!req.session.user || !req.session.user.id) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+      // Fetch the current password hash from the database
+      const query = "SELECT password FROM front_users WHERE id = ?";
+      const [results] = await pool.execute(query, [userId]);
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const currentPasswordHash = results[0].password;
+
+      // Verify the old password
+      const isMatch = await bcrypt.compare(oldPassword, currentPasswordHash);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Old password is incorrect" });
+      }
+
+      // Hash the new password
+      const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update the password in the database
+      const updateQuery = "UPDATE front_users SET password = ? WHERE id = ?";
+      await pool.execute(updateQuery, [newHashedPassword, userId]);
+
+      res.status(200).json({ message: "Password updated successfully" });
+    } catch (err) {
+      console.error("Error during password change:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

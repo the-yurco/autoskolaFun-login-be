@@ -143,44 +143,62 @@ app.post("/logout", (req, res) => {
 app.post(
   "/forgot-password",
   [
+    // Validate inputs
+    body("email").isEmail().withMessage("A valid email is required"),
+    body("name").notEmpty().withMessage("Name is required"),
+    body("surname").notEmpty().withMessage("Surname is required"),
     body("newPassword")
       .isLength({ min: 8 })
       .withMessage("New password must be at least 8 characters long"),
-    body("newPasswordConfirmation")
-      .custom((value, { req }) => {
-        if (value !== req.body.newPassword) {
-          throw new Error("Passwords do not match");
-        }
-        return true;
-      })
-      .withMessage("Password confirmation does not match"),
   ],
   async (req, res) => {
-    // Validate input
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { newPassword } = req.body;
-
-    if (!req.session.user || !req.session.user.id) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const userId = req.session.user.id;
+    const { email, name, surname, newPassword } = req.body;
 
     try {
+      // Check if the user with the given email exists
+      const userQuery = `
+        SELECT id, name, surname
+        FROM front_users
+        WHERE email = ?
+      `;
+      const [users] = await pool.execute(userQuery, [email]);
+
+      if (users.length === 0) {
+        return res
+          .status(404)
+          .json({ message: "No user found with the provided email address" });
+      }
+
+      const user = users[0];
+
+      // Verify name and surname
+      if (user.name !== name || user.surname !== surname) {
+        return res.status(400).json({
+          message: "The provided name and surname do not match our records.",
+        });
+      }
+
       // Hash the new password
-      const newHashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
 
       // Update the password in the database
-      const updateQuery = "UPDATE front_users SET password = ? WHERE id = ?";
-      await pool.execute(updateQuery, [newHashedPassword, userId]);
+      const updateQuery = `
+        UPDATE front_users
+        SET password = ?
+        WHERE id = ?
+      `;
+      await pool.execute(updateQuery, [hashedPassword, user.id]);
 
-      res.status(200).json({ message: "Password updated successfully" });
+      res
+        .status(200)
+        .json({ message: "Password reset successfully. You can now log in." });
     } catch (err) {
-      console.error("Error during password change:", err);
+      console.error("Error during password reset:", err);
       res.status(500).json({ message: "Internal server error" });
     }
   }

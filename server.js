@@ -70,67 +70,38 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-app.post(
-  "/login",
-  [
-    body("name").notEmpty().withMessage("Name is required"),
-    body("surname").notEmpty().withMessage("Surname is required"),
-    body("password").notEmpty().withMessage("Password is required"),
-    body("role_id").isInt().withMessage("Role ID must be an integer"),
-    body("city_id").isInt().withMessage("City ID must be an integer"),
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+router.post("/login", async (req, res) => {
+  const { name, surname, password, role_id, city_id } = req.body;
+
+  try {
+    // Check if user exists
+    const [user] = await db.query(
+      "SELECT * FROM users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?",
+      [name, surname, role_id, city_id]
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
     }
 
-    const { name, surname, password, role_id, city_id } = req.body;
-
-    try {
-      const query = `
-        SELECT id, name, surname, password, role_id, city_id, age, category
-        FROM front_users
-        WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?`;
-      const [results] = await pool.execute(query, [
-        name,
-        surname,
-        role_id,
-        city_id,
-      ]);
-
-      if (results.length === 0) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const user = results[0];
-      const passwordMatch = await bcrypt.compare(password, user.password);
-
-      if (!passwordMatch) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Generate JWT
-      const token = jwt.sign(
-        {
-          id: user.id,
-          name: user.name,
-          surname: user.surname,
-          role_id: user.role_id,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
-
-      res.status(200).json({
-        message: "Login successful",
-        token, // Send token to the client
-      });
-    } catch (err) {
-      next(err); // Pass error to error-handling middleware
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid credentials." });
     }
+
+    // Generate JWT token
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.cookie("token", token, { httpOnly: true });
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error." });
   }
-);
+});
 
 // Check authentication status
 app.get("/check-auth", (req, res) => {

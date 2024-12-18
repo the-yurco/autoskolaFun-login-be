@@ -6,7 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
-import jwt from jsonwebtoken
+const jwt = require("jsonwebtoken");
 
 const app = express();
 // const cors = require("cors");
@@ -132,7 +132,6 @@ app.post(
   }
 );
 
-
 // Check authentication status
 app.get("/check-auth", (req, res) => {
   if (req.session.user) {
@@ -180,7 +179,6 @@ app.use((err, req, res, next) => {
     error: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 });
-
 
 app.post(
   "/forgot-password",

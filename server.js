@@ -32,9 +32,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // CORS configuration
 const allowedOrigins = [
-  // "http://localhost:3000",
   "https://dev-ucebnicafun.emax-controls.eu",
-  // "https://ucebnicafun.emax-controls.eu",
+  "https://ucebnicafun.emax-controls.eu",
 ];
 
 app.use(
@@ -46,7 +45,9 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowing methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowing headers like Content-Type and Authorization
+    credentials: true, // Enable credentials like cookies
   })
 );
 

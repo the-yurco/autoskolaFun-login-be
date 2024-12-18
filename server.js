@@ -6,7 +6,6 @@ const cors = require("cors");
 require("dotenv").config();
 const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
-const jwt = require("jsonwebtoken");
 
 const app = express();
 // const cors = require("cors");
@@ -31,23 +30,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS configuration
-const allowedOrigins = [
-  "https://dev-ucebnicafun.emax-controls.eu",
-  "https://ucebnicafun.emax-controls.eu",
-];
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Allowing methods
-    allowedHeaders: ["Content-Type", "Authorization"], // Allowing headers like Content-Type and Authorization
-    credentials: true, // Enable credentials like cookies
+    //
+    // origin: "http://localhost:3000",
+    origin: "https://dev-ucebnicafun.emax-controls.eu",
+    // origin: "https://ucebnicafun.emax-controls.eu",
+    credentials: true, // Allow cookies
   })
 );
 
@@ -71,38 +60,68 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-app.post("/login", async (req, res) => {
-  const { name, surname, password, role_id, city_id } = req.body;
-
-  try {
-    // Check if user exists
-    const [user] = await pool.query(
-      "SELECT * FROM users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?",
-      [name, surname, role_id, city_id]
-    );
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
+app.post(
+  "/login",
+  [
+    body("name").notEmpty().withMessage("Name is required"),
+    body("surname").notEmpty().withMessage("Surname is required"),
+    body("password").notEmpty().withMessage("Password is required"),
+    body("role_id").isInt().withMessage("Role ID must be an integer"),
+    body("city_id").isInt().withMessage("City ID must be an integer"),
+  ],
+  async (req, res) => {
+    // Validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: "Invalid credentials." });
+    const { name, surname, password, role_id, city_id } = req.body;
+
+    try {
+      const query = `
+        SELECT id, name, surname, password, role_id, city_id, age, category
+        FROM front_users
+        WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?`;
+
+      const [results] = await pool.execute(query, [
+        name,
+        surname,
+        role_id,
+        city_id,
+      ]);
+
+      if (results.length === 0) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const user = results[0];
+
+      // Verify password using bcrypt
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Set the session after successful login
+      req.session.user = {
+        id: user.id,
+        name: user.name,
+        surname: user.surname,
+        role_id: user.role_id,
+        city_id: user.city_id,
+        age: user.age,
+        category: user.category,
+      };
+
+      // Respond with the session user data
+      res.status(200).json({ user: req.session.user });
+    } catch (err) {
+      console.error("Error during login:", err);
+      res.status(500).json({ message: "Internal server error" });
     }
-
-    // Generate JWT token
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    res.cookie("token", token, { httpOnly: true });
-    res.status(200).json({ user });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error." });
   }
-});
+);
 
 // Check authentication status
 app.get("/check-auth", (req, res) => {
@@ -120,35 +139,6 @@ app.post("/logout", (req, res) => {
     }
     res.clearCookie("session_cookie_name");
     res.status(200).json({ message: "Logged out successfully" });
-  });
-});
-
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ message: "Access token missing" });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
-    req.user = user; // Attach user to request object
-    next();
-  });
-};
-
-app.get("/protected", authenticateToken, (req, res) => {
-  res.status(200).json({ message: "Welcome to the protected route!" });
-});
-
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: "Internal server error",
-    error: process.env.NODE_ENV === "development" ? err.message : undefined,
   });
 });
 

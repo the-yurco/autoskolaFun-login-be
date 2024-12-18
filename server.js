@@ -70,12 +70,12 @@ app.get("/", (req, res) => {
   res.send("Backend server is running");
 });
 
-router.post("/login", async (req, res) => {
+app.post("/login", async (req, res) => {
   const { name, surname, password, role_id, city_id } = req.body;
 
   try {
     // Check if user exists
-    const [user] = await db.query(
+    const [user] = await pool.query(
       "SELECT * FROM users WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?",
       [name, surname, role_id, city_id]
     );

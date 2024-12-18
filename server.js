@@ -6,6 +6,7 @@ const cors = require("cors");
 require("dotenv").config();
 const MySQLStore = require("express-mysql-session")(session);
 const { body, validationResult } = require("express-validator");
+import jwt from jsonwebtoken
 
 const app = express();
 // const cors = require("cors");
@@ -30,12 +31,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // CORS configuration
+const allowedOrigins = [
+  // "http://localhost:3000",
+  "https://dev-ucebnicafun.emax-controls.eu",
+  // "https://ucebnicafun.emax-controls.eu",
+];
+
 app.use(
   cors({
-    //
-    origin: "http://localhost:3000",
-    // origin: "https://dev-ucebnicafun.emax-controls.eu",
-    credentials: true, // Allow cookies
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
   })
 );
 
@@ -68,8 +79,7 @@ app.post(
     body("role_id").isInt().withMessage("Role ID must be an integer"),
     body("city_id").isInt().withMessage("City ID must be an integer"),
   ],
-  async (req, res) => {
-    // Validation
+  async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -82,7 +92,6 @@ app.post(
         SELECT id, name, surname, password, role_id, city_id, age, category
         FROM front_users
         WHERE name = ? AND surname = ? AND role_id = ? AND city_id = ?`;
-
       const [results] = await pool.execute(query, [
         name,
         surname,
@@ -95,32 +104,34 @@ app.post(
       }
 
       const user = results[0];
-
-      // Verify password using bcrypt
       const passwordMatch = await bcrypt.compare(password, user.password);
+
       if (!passwordMatch) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Set the session after successful login
-      req.session.user = {
-        id: user.id,
-        name: user.name,
-        surname: user.surname,
-        role_id: user.role_id,
-        city_id: user.city_id,
-        age: user.age,
-        category: user.category,
-      };
+      // Generate JWT
+      const token = jwt.sign(
+        {
+          id: user.id,
+          name: user.name,
+          surname: user.surname,
+          role_id: user.role_id,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "1d" }
+      );
 
-      // Respond with the session user data
-      res.status(200).json({ user: req.session.user });
+      res.status(200).json({
+        message: "Login successful",
+        token, // Send token to the client
+      });
     } catch (err) {
-      console.error("Error during login:", err);
-      res.status(500).json({ message: "Internal server error" });
+      next(err); // Pass error to error-handling middleware
     }
   }
 );
+
 
 // Check authentication status
 app.get("/check-auth", (req, res) => {
@@ -140,6 +151,36 @@ app.post("/logout", (req, res) => {
     res.status(200).json({ message: "Logged out successfully" });
   });
 });
+
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "Access token missing" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+    req.user = user; // Attach user to request object
+    next();
+  });
+};
+
+app.get("/protected", authenticateToken, (req, res) => {
+  res.status(200).json({ message: "Welcome to the protected route!" });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
+});
+
 
 app.post(
   "/forgot-password",
